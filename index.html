@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Online Code Compiler</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background-color: #f4f4f4;
+    }
+    select, textarea, button {
+      width: 100%;
+      margin: 10px 0;
+      padding: 10px;
+      font-size: 16px;
+    }
+    #output {
+      background-color: #1e1e1e;
+      color: #00ff00;
+      height: 150px;
+      resize: none;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Code Compiler</h2>
+
+  <label for="language">Select Language:</label>
+  <select id="language">
+    <option value="0">Python</option>
+    <option value="4">JavaScript</option>
+    <option value="7">C</option>
+    <option value="77">C++</option>
+    <option value="8">Java</option>
+  </select>
+
+  <label for="editor">Write your code:</label>
+  <textarea id="editor" rows="10" placeholder="Write your code here..."></textarea>
+
+  <button onclick="compileCode()">Compile Code</button>
+
+  <label for="output">Output:</label>
+  <textarea id="output" readonly></textarea>
+
+  <script>
+    function compileCode() {
+      const code = document.getElementById("editor").value;
+      const langId = document.getElementById("language").value;
+      const outputBox = document.getElementById("output");
+
+      if (!code.trim()) {
+        outputBox.value = "Please write some code before compiling.";
+        return;
+      }
+
+      outputBox.value = "Sending code for execution...";
+
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", "https://course.codequotient.com/api/executeCode");
+      xhr.setRequestHeader("Content-Type", "application/json");
+
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState === 4) {
+          const response = JSON.parse(xhr.responseText);
+          if (response.error) {
+            outputBox.value = "Error: " + response.error;
+          } else {
+            const codeId = response.codeId;
+            pollForResult(codeId);
+          }
+        }
+      };
+
+      xhr.send(JSON.stringify({ code: code, langId: langId }));
+    }
+
+   function pollForResult(codeId) {
+  const outputBox = document.getElementById("output");
+
+  const intervalId = setInterval(() => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("GET", `https://course.codequotient.com/api/codeResult/${codeId}`);
+    xhr.onreadystatechange = function () {
+      if (xhr.readyState === 4) {
+        const result = JSON.parse(xhr.responseText);
+
+        if (result.data && Object.keys(result.data).length > 0) {
+          clearInterval(intervalId);
+
+          // FIX: result.data is a string, so parse it
+          let parsedData = result.data;
+          if (typeof parsedData === "string") {
+            parsedData = JSON.parse(parsedData);
+          }
+
+          const output = parsedData.output?.trim();
+          const errors = parsedData.errors?.trim();
+
+          if (errors) {
+            outputBox.value = `Compilation Error:\n${errors}`;
+          } else if (output) {
+            outputBox.value = `${output}`;
+          } else {
+            outputBox.value = "No output or error returned.";
+          }
+        }
+      }
+    };
+    xhr.send();
+  }, 2000);
+}
+  </script>
+</body>
+</html>
+
+
